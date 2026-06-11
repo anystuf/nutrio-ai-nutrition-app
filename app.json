@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Nutrio",
+    "slug": "nutrio",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./images/abblack.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./images/abblack.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7FAF5"
+    },
+    "assetBundlePatterns": [
+      "images/**/*",
+      "fonts/**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./images/abblack.png",
+        "backgroundColor": "#F7FAF5"
+      },
+      "package": "com.nutrio.app"
+    },
+    "web": {
+      "favicon": "./web/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Nutrio needs camera access to scan foods and barcodes."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nutrio needs photo access to scan food images."
+        }
+      ]
+    ],
+    "scheme": "nutrio"
+  }
+}
