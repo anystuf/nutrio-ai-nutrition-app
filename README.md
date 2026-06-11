@@ -1,8 +1,10 @@
-# Nutrio - JavaScript
+# Nutrio AI Nutrition App
 
-Expo + TypeScript migration of the Nutrio Flutter app.
+Expo + TypeScript migration of the Nutrio Flutter nutrition app.
 
-## Run
+Nutrio helps users track food, calories, macros, workouts, and nutrition progress with Firebase data, barcode lookup, AI food scanning, and a Gemini-powered coach.
+
+## Run locally
 
 ```powershell
 cd "D:\Projects\Nutrio - javascript"
@@ -18,21 +20,44 @@ Open:
 http://127.0.0.1:8081
 ```
 
-## Included Features
+## Key Features
 
-- Firebase auth and profile onboarding
-- Home dashboard with calorie, macro, meals, banner, quick actions
-- Meal detail and daily meal history
-- Food search and quick logging
-- Barcode scanner and AI food scanner
+- Firebase email/password auth, Google Sign-In flow, and profile onboarding
+- Home dashboard with calories, macros, meals, quick actions, and daily logs
+- Food search, quick logging, custom food creation, and meal portion editing
+- Barcode lookup and AI food scanner flow
 - Gemini Nutrio Coach using `gemini-2.5-flash-lite`
-- Recipes and favorites
-- Insights with BMI, BMR, TDEE and macro goals
-- Workout menu
-- Profile, Nutrio Pro, payments, notifications, contact, FAQ placeholders
+- Recipes, favorites, and food detail screens
+- Insights with BMI, BMR, TDEE, charts, and macro goals
+- Workout screen with web MoveNet squat pose detection and native dev-build guidance
+- Profile, Nutrio Pro, payment, notifications, FAQ, contact, and personal data pages
+- Sidebar/navigation drawer ported from the Flutter app
+
+## Tech Stack
+
+- Expo
+- React Native
+- TypeScript
+- Firebase Authentication
+- Cloud Firestore
+- Gemini API
+- TensorFlow MoveNet for web pose detection
 
 ## Environment
 
-The real Gemini key is stored in `.env.local`. Keep that file private.
+Copy `.env.example` to `.env.local` and fill local secrets there.
 
-Use `.env.example` as the template when moving the app to another machine.
+```text
+EXPO_PUBLIC_GEMINI_MODEL=gemini-2.5-flash-lite
+EXPO_PUBLIC_GEMINI_API_KEY=your-gemini-api-key
+```
+
+Keep `.env.local` private. It is ignored by git.
+
+## Migration Notes
+
+The original Flutter/Dart app remains the source visual and feature reference. This repo contains the JavaScript/TypeScript Expo port plus parity notes in:
+
+- `DATA_PARITY_REPORT.md`
+- `LIB_PARITY_REPORT.md`
+- `PARITY_CHECKLIST.md`
