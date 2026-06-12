@@ -304,9 +304,9 @@ const styles = StyleSheet.create({
   },
   greenHeader: {
     backgroundColor: colors.primarySoft,
-    height: 172,
-    paddingHorizontal: 28,
-    paddingTop: 16,
+    height: 150,
+    paddingHorizontal: 30,
+    paddingTop: 18,
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
@@ -314,9 +314,9 @@ const styles = StyleSheet.create({
     zIndex: 2
   },
   menuButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
@@ -329,24 +329,24 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    top: 18,
+    top: 20,
     alignItems: "center",
     pointerEvents: "none"
   },
   logo: {
-    width: 28,
-    height: 28
+    width: 30,
+    height: 30
   },
   appTitle: {
     color: colors.primaryDark,
-    fontSize: 22,
+    fontSize: 23,
     fontWeight: "900",
-    marginTop: 6
+    marginTop: 5
   },
   bell: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.primaryDark,
     alignItems: "center",
@@ -354,8 +354,8 @@ const styles = StyleSheet.create({
   },
   redDot: {
     position: "absolute",
-    top: 10,
-    right: 11,
+    top: 11,
+    right: 12,
     width: 7,
     height: 7,
     borderRadius: 4,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   },
   notificationPanel: {
     position: "absolute",
-    top: 66,
+    top: 72,
     right: 20,
     width: 250,
     borderRadius: 16,
@@ -389,15 +389,15 @@ const styles = StyleSheet.create({
     fontSize: 13
   },
   dashboardCard: {
-    marginHorizontal: 20,
-    marginTop: -76,
+    marginHorizontal: 24,
+    marginTop: -44,
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 18,
+    borderRadius: 22,
+    padding: 20,
     shadowColor: "#000000",
     shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 4
+    shadowRadius: 16,
+    elevation: 5
   },
   dateBar: {
     flexDirection: "row",
