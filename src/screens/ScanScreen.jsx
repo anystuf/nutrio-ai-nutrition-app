@@ -1,5 +1,6 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -373,8 +374,7 @@ export function ScanScreen({ user, mealType = "Lunch", onNavigate }) {
 
 function WebBarcodeScanner({ onDetected, onClose, onStatus }) {
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const timerRef = useRef(null);
+  const controlsRef = useRef(null);
   const [scannerStatus, setScannerStatus] = useState("Starting camera...");
 
   function report(message) {
@@ -384,54 +384,40 @@ function WebBarcodeScanner({ onDetected, onClose, onStatus }) {
 
   useEffect(() => {
     let active = true;
+    const reader = new BrowserMultiFormatReader();
 
-    async function start() {
+    async function startScanner() {
       try {
-        if (typeof window === "undefined" || !("BarcodeDetector" in window)) {
-          report("This browser cannot decode barcodes automatically. Use Manual barcode lookup below.");
+        if (!navigator.mediaDevices?.getUserMedia) {
+          report("Camera scanning is not available in this browser. Use Manual barcode lookup below.");
           return;
         }
 
-        streamRef.current = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false
-        });
-
-        if (!active || !videoRef.current) return;
-        videoRef.current.srcObject = streamRef.current;
-        await videoRef.current.play();
-        report("Scanning barcode...");
-
-        const detector = new window.BarcodeDetector({
-          formats: ["ean_13", "ean_8", "upc_a", "upc_e", "qr_code", "code_128", "code_39"]
-        });
-
-        async function detect() {
-          if (!active || !videoRef.current) return;
-          try {
-            const codes = await detector.detect(videoRef.current);
-            const rawValue = codes?.[0]?.rawValue;
-            if (rawValue) {
-              onDetected(rawValue);
-              return;
+        report("Scanning barcode with ZXing...");
+        controlsRef.current = await reader.decodeFromConstraints(
+          { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+          videoRef.current,
+          (result) => {
+            if (!active || !result) return;
+            const text = result.getText?.() || String(result.text || "");
+            if (text) {
+              active = false;
+              controlsRef.current?.stop?.();
+              onDetected(text);
             }
-          } catch {
-            // Keep scanning; camera frames can be temporarily unreadable.
           }
-          timerRef.current = setTimeout(detect, 220);
-        }
-
-        detect();
+        );
       } catch (error) {
-        report(error instanceof Error ? error.message : "Could not start barcode scanner.");
+        const message = error instanceof Error ? error.message : "Could not start barcode scanner.";
+        report(message + " Use Manual barcode lookup below.");
       }
     }
 
-    void start();
+    void startScanner();
     return () => {
       active = false;
-      if (timerRef.current) clearTimeout(timerRef.current);
-      streamRef.current?.getTracks?.().forEach((track) => track.stop());
+      controlsRef.current?.stop?.();
+      reader.reset?.();
     };
   }, [onDetected, onStatus]);
 
@@ -442,7 +428,7 @@ function WebBarcodeScanner({ onDetected, onClose, onStatus }) {
         <View style={styles.scanFrame} />
         <Text style={styles.scanHint}>Align the barcode inside the frame</Text>
         <Text style={styles.scanSubHint}>{scannerStatus}</Text>
-        <Text style={styles.scanSubHint}>If it does not read, enter the barcode manually.</Text>
+        <Text style={styles.scanSubHint}>Try moving closer, improve lighting, or enter the barcode manually.</Text>
       </View>
       <Pressable style={styles.closeScan} onPress={onClose}>
         <Text style={styles.closeText}>Close</Text>
