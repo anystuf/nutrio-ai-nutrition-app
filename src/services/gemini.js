@@ -74,6 +74,27 @@ export async function identifyFoodsFromImage(base64, mimeType = "image/jpeg") {
   filter(Boolean);
 }
 
+export async function estimateFoodNutritionByName(foodName) {
+  const prompt = [
+    "You are Nutrio's nutrition assistant.",
+    "Estimate nutrition for one normal visible serving of this food:",
+    foodName,
+    "Return only valid compact JSON with this exact shape:",
+    '{"label":"food name","kcal":0,"carbs":0,"protein":0,"fat":0}',
+    "Use grams for carbs, protein, and fat. Use realistic values."
+  ].join(" ");
+
+  const text = await callGemini([{ text: prompt }]);
+  const parsed = parseJsonObject(text);
+  return {
+    label: String(parsed.label || foodName),
+    kcal: Number(parsed.kcal || 0),
+    carbs: Number(parsed.carbs || 0),
+    protein: Number(parsed.protein || 0),
+    fat: Number(parsed.fat || 0)
+  };
+}
+
 async function callGemini(parts) {
   if (!GEMINI_API_KEY) {
     throw new Error("Missing EXPO_PUBLIC_GEMINI_API_KEY in .env.local");

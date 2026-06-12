@@ -1,13 +1,14 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Header } from "@/components/Header";
 import { Screen } from "@/components/Screen";
-import { identifyFoodsFromImage } from "@/services/gemini";
+import { estimateFoodNutritionByName, identifyFoodsFromImage } from "@/services/gemini";
 import { addFoodToDiary } from "@/services/mealLog";
+import { searchEdamamFoods, searchLocalFoods } from "@/services/foodSearch";
 import { analyzeIngredients } from "@/services/nutritionAnalysis";
 import { colors } from "@/theme/colors";
 
@@ -36,6 +37,8 @@ export function ScanScreen({ user, mealType = "Lunch", onNavigate }) {
   const [barcodeInput, setBarcodeInput] = useState("");
   const [product, setProduct] = useState(null);
   const [pickedImage, setPickedImage] = useState("");
+  const [pickedImageBase64, setPickedImageBase64] = useState("");
+  const [pickedImageMime, setPickedImageMime] = useState("image/jpeg");
   const [detectedFoods, setDetectedFoods] = useState([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -126,6 +129,7 @@ export function ScanScreen({ user, mealType = "Lunch", onNavigate }) {
       setBarcodeInput(clean);
       setDetectedFoods([]);
       setPickedImage("");
+      setPickedImageBase64("");
       setStatus("Barcode product found.");
     } catch (error) {
       Alert.alert("Lookup failed", error instanceof Error ? error.message : "Please try again.");
@@ -146,6 +150,7 @@ export function ScanScreen({ user, mealType = "Lunch", onNavigate }) {
       setProduct(null);
       setDetectedFoods([]);
       setPickedImage("");
+      setPickedImageBase64("");
       setStatus("Saved to diary.");
     } catch (error) {
       Alert.alert("Save failed", error instanceof Error ? error.message : "Please try again.");
@@ -182,6 +187,8 @@ export function ScanScreen({ user, mealType = "Lunch", onNavigate }) {
       if (!asset.base64) throw new Error("Could not read image data.");
 
       setPickedImage(asset.uri);
+      setPickedImageBase64(asset.base64);
+      setPickedImageMime(asset.mimeType || "image/jpeg");
       setStatus("Detecting foods with Gemini...");
 
       const foods = await identifyFoodsFromImage(asset.base64, asset.mimeType || "image/jpeg");
@@ -205,24 +212,34 @@ export function ScanScreen({ user, mealType = "Lunch", onNavigate }) {
     setBusy(true);
     setStatus(`Estimating nutrition for ${foodName}...`);
     try {
-      const nutrition = await analyzeIngredients([foodName]);
-      if (nutrition.kcal === 0 && nutrition.protein === 0) {
-        Alert.alert("Nutrition not found", `Could not find nutrition data for "${foodName}". Try a clearer name or create food manually.`);
+      let food = findLocalFood(foodName);
+
+      if (!food) {
+        const nutrition = await analyzeIngredients([withServing(foodName)]);
+        if (hasNutrition(nutrition)) {
+          food = buildFoodItem(foodName, nutrition, "AI estimate", pickedImage, ["ai", "edamam"], "Edamam Nutrition");
+        }
+      }
+
+      if (!food) {
+        const apiFoods = await searchEdamamFoods(foodName);
+        if (apiFoods.length > 0) food = { ...apiFoods[0], image: pickedImage || apiFoods[0].image };
+      }
+
+      if (!food) {
+        const geminiNutrition = await estimateFoodNutritionByName(foodName);
+        if (hasNutrition(geminiNutrition)) {
+          food = buildFoodItem(geminiNutrition.label || foodName, geminiNutrition, "AI estimate", pickedImage, ["ai", "gemini"], "Gemini estimate");
+        }
+      }
+
+      if (!food) {
+        Alert.alert("Nutrition not found", `Could not estimate nutrition for "${foodName}". Try a clearer photo or create food manually.`);
         setStatus("Nutrition lookup returned no data.");
         return;
       }
 
-      setProduct({
-        label: foodName,
-        kcal: Math.round(nutrition.kcal),
-        carbs: Math.round(nutrition.carbs),
-        protein: Math.round(nutrition.protein),
-        fat: Math.round(nutrition.fat),
-        serving: "AI estimate",
-        image: pickedImage,
-        tags: ["ai", "gemini", "edamam"],
-        source: "Gemini + Edamam"
-      });
+      setProduct(food);
       setStatus("Nutrition estimate ready.");
     } catch (error) {
       Alert.alert("Nutrition failed", error instanceof Error ? error.message : "Please try again.");
@@ -230,6 +247,20 @@ export function ScanScreen({ user, mealType = "Lunch", onNavigate }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (scanning && Platform.OS === "web") {
+    return (
+      <WebBarcodeScanner
+        onClose={() => setScanning(false)}
+        onStatus={setStatus}
+        onDetected={(data) => {
+          if (scanLocked.current) return;
+          scanLocked.current = true;
+          setScanning(false);
+          void lookupBarcode(data);
+        }} />
+    );
   }
 
   if (scanning) {
@@ -254,7 +285,6 @@ export function ScanScreen({ user, mealType = "Lunch", onNavigate }) {
         <View pointerEvents="none" style={styles.scanOverlay}>
           <View style={styles.scanFrame} />
           <Text style={styles.scanHint}>Align the barcode inside the frame</Text>
-          {Platform.OS === "web" ? <Text style={styles.scanSubHint}>Web camera scan can be unreliable. Manual lookup is available.</Text> : null}
         </View>
         <Pressable style={styles.closeScan} onPress={() => setScanning(false)}>
           <Text style={styles.closeText}>Close</Text>
@@ -341,6 +371,117 @@ export function ScanScreen({ user, mealType = "Lunch", onNavigate }) {
 
 }
 
+function WebBarcodeScanner({ onDetected, onClose, onStatus }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const timerRef = useRef(null);
+  const [scannerStatus, setScannerStatus] = useState("Starting camera...");
+
+  function report(message) {
+    setScannerStatus(message);
+    onStatus(message);
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    async function start() {
+      try {
+        if (typeof window === "undefined" || !("BarcodeDetector" in window)) {
+          report("This browser cannot decode barcodes automatically. Use Manual barcode lookup below.");
+          return;
+        }
+
+        streamRef.current = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+
+        if (!active || !videoRef.current) return;
+        videoRef.current.srcObject = streamRef.current;
+        await videoRef.current.play();
+        report("Scanning barcode...");
+
+        const detector = new window.BarcodeDetector({
+          formats: ["ean_13", "ean_8", "upc_a", "upc_e", "qr_code", "code_128", "code_39"]
+        });
+
+        async function detect() {
+          if (!active || !videoRef.current) return;
+          try {
+            const codes = await detector.detect(videoRef.current);
+            const rawValue = codes?.[0]?.rawValue;
+            if (rawValue) {
+              onDetected(rawValue);
+              return;
+            }
+          } catch {
+            // Keep scanning; camera frames can be temporarily unreadable.
+          }
+          timerRef.current = setTimeout(detect, 220);
+        }
+
+        detect();
+      } catch (error) {
+        report(error instanceof Error ? error.message : "Could not start barcode scanner.");
+      }
+    }
+
+    void start();
+    return () => {
+      active = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      streamRef.current?.getTracks?.().forEach((track) => track.stop());
+    };
+  }, [onDetected, onStatus]);
+
+  return (
+    <View style={styles.cameraRoot}>
+      <video ref={videoRef} muted playsInline autoPlay style={styles.webVideo} />
+      <View pointerEvents="none" style={styles.scanOverlay}>
+        <View style={styles.scanFrame} />
+        <Text style={styles.scanHint}>Align the barcode inside the frame</Text>
+        <Text style={styles.scanSubHint}>{scannerStatus}</Text>
+        <Text style={styles.scanSubHint}>If it does not read, enter the barcode manually.</Text>
+      </View>
+      <Pressable style={styles.closeScan} onPress={onClose}>
+        <Text style={styles.closeText}>Close</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function findLocalFood(foodName) {
+  const matches = searchLocalFoods(foodName);
+  if (!matches.length) return null;
+  const best = matches[0];
+  return { ...best, tags: [...(best.tags || []), "local-estimate"], source: best.source || "Nutrio local foods" };
+}
+
+function withServing(foodName) {
+  const clean = foodName.trim();
+  if (/^\d|\b(g|gram|grams|cup|cups|slice|slices|bowl|plate|serving)\b/i.test(clean)) return clean;
+  return "1 serving " + clean;
+}
+
+function hasNutrition(nutrition) {
+  return Number(nutrition?.kcal || 0) > 0 || Number(nutrition?.protein || 0) > 0 || Number(nutrition?.carbs || 0) > 0 || Number(nutrition?.fat || 0) > 0;
+}
+
+function buildFoodItem(label, nutrition, serving, image, tags, source) {
+  return {
+    label,
+    kcal: Math.round(Number(nutrition.kcal || 0)),
+    carbs: Math.round(Number(nutrition.carbs || 0)),
+    protein: Math.round(Number(nutrition.protein || 0)),
+    fat: Math.round(Number(nutrition.fat || 0)),
+    serving,
+    image,
+    tags,
+    source
+  };
+}
+
 function numberFrom(...values) {
   for (const value of values) {
     const numberValue = Number(value);
@@ -371,6 +512,16 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1
+  },
+  webVideo: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover"
   },
   scanOverlay: {
     position: "absolute",
