@@ -9,6 +9,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export async function signInWithGoogleAccount() {
   if (Platform.OS === "web") {
+    redirectToAuthorizedLocalhostIfNeeded();
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     const credential = await signInWithPopup(auth, provider);
@@ -21,6 +22,15 @@ export async function signInWithGoogleAccount() {
   const result = await signInWithCredential(auth, credential);
   await ensureGoogleUserDocument(result.user, getAdditionalUserInfo(result)?.isNewUser === true);
   return result.user;
+}
+
+function redirectToAuthorizedLocalhostIfNeeded() {
+  if (typeof window === "undefined") return;
+  if (window.location.hostname !== "127.0.0.1") return;
+  const next = new URL(window.location.href);
+  next.hostname = "localhost";
+  window.location.replace(next.toString());
+  throw new Error("Redirecting to localhost for Google Sign-In. Please tap Google again after the page reloads.");
 }
 
 async function requestNativeGoogleIdToken() {
