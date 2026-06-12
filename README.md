@@ -1,6 +1,6 @@
 # Nutrio AI Nutrition App
 
-Expo + JavaScript migration of the Nutrio Flutter nutrition app.
+Expo + React Native JavaScript nutrition app.
 
 Nutrio helps users track food, calories, macros, workouts, and nutrition progress with Firebase data, barcode lookup, AI food scanning, and a Gemini-powered coach.
 
@@ -31,7 +31,7 @@ http://127.0.0.1:8081
 - Insights with BMI, BMR, TDEE, charts, and macro goals
 - Workout screen with web MoveNet squat pose detection and native dev-build guidance
 - Profile, Nutrio Pro, payment, notifications, FAQ, contact, and personal data pages
-- Sidebar/navigation drawer ported from the Flutter app
+- Sidebar/navigation drawer and mobile-first app flow
 
 ## Tech Stack
 
@@ -55,7 +55,7 @@ Keep `.env.local` private. It is ignored by git.
 
 ## Migration Notes
 
-The original Flutter/Dart app remains the source visual and feature reference. This repo contains the JavaScript Expo port plus parity notes in:
+The original Flutter/Dart app was used only as the source visual and feature reference during migration. This repository contains the JavaScript Expo app plus parity notes in:
 
 - `DATA_PARITY_REPORT.md`
 - `LIB_PARITY_REPORT.md`
