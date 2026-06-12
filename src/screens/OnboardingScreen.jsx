@@ -1,9 +1,7 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
-
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { useState } from "react";
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
@@ -118,23 +116,15 @@ export function OnboardingScreen({ user, onDone }) {
     if (page === 1) {
       return <Step title="What's your gender?"><OptionGrid values={["Male", "Female"]} selected={gender} onSelect={setGender} /></Step>;
     }
-    if (page === 2) {
-      return (
-        <Step title="When's your birthday?">
-          <DateTimePicker value={birthDate} mode="date" maximumDate={new Date()} display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(_, value) => value && setBirthDate(value)} />
-        </Step>);
-
-    }
+    if (page === 2) return <BirthdayStep value={birthDate} onChange={setBirthDate} />;
     if (page === 3) return <NumberStep title="How tall are you?" value={height} unit="cm" min={100} max={250} onChange={setHeight} />;
     if (page === 4) return <NumberStep title="What's your current weight?" value={currentWeight} unit="kg" min={30} max={300} step={0.5} onChange={setCurrentWeight} />;
     if (page === 5) return <NumberStep title="What's your target weight?" value={targetWeight} unit="kg" min={30} max={300} step={0.5} onChange={setTargetWeight} />;
     if (page === 6) return <Step title="What's your main goals?"><OptionGrid values={goals} selected={selectedGoals} onToggle={toggleGoal} /></Step>;
     if (page === 7) return <Step title="What's your activity level?"><OptionGrid values={activities} selected={activityLevel} onSelect={setActivityLevel} /></Step>;
     if (page === 8) return <Step title="What's your diet type?"><OptionGrid values={diets} selected={dietType} onSelect={setDietType} /></Step>;
-    if (page === 9) {
-      return <Step title="When do you usually have breakfast?"><DateTimePicker value={breakfastTime} mode="time" onChange={(_, value) => value && setBreakfastTime(value)} /></Step>;
-    }
-    return <Step title="When do you usually have dinner?"><DateTimePicker value={dinnerTime} mode="time" onChange={(_, value) => value && setDinnerTime(value)} /></Step>;
+    if (page === 9) return <TimeStep title="When do you usually have breakfast?" value={breakfastTime} onChange={setBreakfastTime} />;
+    return <TimeStep title="When do you usually have dinner?" value={dinnerTime} onChange={setDinnerTime} />;
   }
 }
 
@@ -195,12 +185,91 @@ function NumberStep(props)
 
 }
 
+
+function BirthdayStep({ value, onChange }) {
+  const years = Array.from({ length: 76 }, (_, index) => new Date().getFullYear() - index - 10);
+  const months = Array.from({ length: 12 }, (_, index) => index);
+  const days = Array.from({ length: daysInMonth(value.getFullYear(), value.getMonth()) }, (_, index) => index + 1);
+
+  function update(next) {
+    const year = next.year ?? value.getFullYear();
+    const month = next.month ?? value.getMonth();
+    const day = Math.min(next.day ?? value.getDate(), daysInMonth(year, month));
+    onChange(new Date(year, month, day));
+  }
+
+  return (
+    <Step title="When's your birthday?">
+      <View style={styles.pickerPanel}>
+        <PickerColumn label="Month" values={months} value={value.getMonth()} format={(month) => monthNames[month]} onSelect={(month) => update({ month })} />
+        <PickerColumn label="Day" values={days} value={value.getDate()} onSelect={(day) => update({ day })} />
+        <PickerColumn label="Year" values={years} value={value.getFullYear()} onSelect={(year) => update({ year })} />
+      </View>
+      <Text style={styles.selectedText}>{formatDate(value)}</Text>
+    </Step>
+  );
+}
+
+function TimeStep({ title, value, onChange }) {
+  const hours = Array.from({ length: 24 }, (_, index) => index);
+  const minutes = [0, 15, 30, 45];
+  function update(next) {
+    const date = new Date(value);
+    if (next.hour !== undefined) date.setHours(next.hour);
+    if (next.minute !== undefined) date.setMinutes(next.minute);
+    onChange(date);
+  }
+  return (
+    <Step title={title}>
+      <View style={styles.timePanel}>
+        <View style={styles.timeNumberWrap}>
+          <Text style={styles.timeNumber}>{formatTime(value)}</Text>
+          <Text style={styles.timeHint}>Tap an hour and minute</Text>
+        </View>
+        <PickerColumn label="Hour" values={hours} value={value.getHours()} format={(hour) => hour.toString().padStart(2, "0")} onSelect={(hour) => update({ hour })} compact />
+        <PickerColumn label="Minute" values={minutes} value={value.getMinutes()} format={(minute) => minute.toString().padStart(2, "0")} onSelect={(minute) => update({ minute })} compact />
+      </View>
+    </Step>
+  );
+}
+
+function PickerColumn({ label, values, value, onSelect, format = String, compact }) {
+  return (
+    <View style={styles.pickerColumn}>
+      <Text style={styles.pickerLabel}>{label}</Text>
+      <View style={[styles.pickerOptions, compact && styles.pickerOptionsCompact]}>
+        {values.map((item) => {
+          const active = item === value;
+          return (
+            <Pressable key={item} style={[styles.pickerOption, compact && styles.pickerOptionCompact, active && styles.pickerOptionActive]} onPress={() => onSelect(item)}>
+              <Text style={[styles.pickerOptionText, active && styles.pickerOptionTextActive]}>{format(item)}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function formatDate(date) {
+  return monthNames[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
+}
+
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 function formatTime(date) {
   return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
 }
 
 const styles = StyleSheet.create({
   screen: {
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
     gap: 20
   },
   progressHeader: {
@@ -223,7 +292,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary
   },
   body: {
-    flex: 1
+    flex: 1,
+    minHeight: 460
   },
   step: {
     flex: 1,
@@ -234,7 +304,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 31,
     lineHeight: 38,
-    fontWeight: "900"
+    fontWeight: "900",
+    textAlign: "left"
   },
   options: {
     flexDirection: "row",
@@ -294,6 +365,86 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 18,
     fontWeight: "800"
+  },
+  pickerPanel: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14
+  },
+  timePanel: {
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    gap: 14
+  },
+  timeNumberWrap: {
+    alignItems: "center",
+    paddingVertical: 8
+  },
+  timeNumber: {
+    color: colors.primaryDark,
+    fontSize: 48,
+    fontWeight: "900"
+  },
+  timeHint: {
+    color: colors.textMuted,
+    fontWeight: "700"
+  },
+  pickerColumn: {
+    flex: 1,
+    gap: 8
+  },
+  pickerLabel: {
+    color: colors.textMuted,
+    fontWeight: "900",
+    textAlign: "center"
+  },
+  pickerOptions: {
+    maxHeight: 230,
+    overflow: "scroll",
+    gap: 8
+  },
+  pickerOptionsCompact: {
+    maxHeight: 172,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center"
+  },
+  pickerOption: {
+    minHeight: 42,
+    borderRadius: 14,
+    backgroundColor: colors.muted,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10
+  },
+  pickerOptionCompact: {
+    minWidth: 62
+  },
+  pickerOptionActive: {
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.primaryDark
+  },
+  pickerOptionText: {
+    color: colors.text,
+    fontWeight: "800"
+  },
+  pickerOptionTextActive: {
+    color: colors.primaryDark,
+    fontWeight: "900"
+  },
+  selectedText: {
+    color: colors.primaryDark,
+    fontSize: 22,
+    fontWeight: "900",
+    textAlign: "center"
   },
   nav: {
     gap: 8
