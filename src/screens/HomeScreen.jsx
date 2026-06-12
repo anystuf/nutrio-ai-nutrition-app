@@ -24,11 +24,12 @@ const meals = [
 { type: "Snacks", field: "snacks_kcal", color: colors.pink, targetRatio: 0.1, icon: "ice-cream" }];
 
 
-export function HomeScreen({ user, onNavigate }) {
+export function HomeScreen({ user, onNavigate, onOpenMenu }) {
   const [profile, setProfile] = useState(null);
   const [dailyLog, setDailyLog] = useState(null);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [loading, setLoading] = useState(true);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const selectedDateId = useMemo(() => toDateId(selectedDate), [selectedDate]);
   const todayId = toDateId(new Date());
@@ -99,12 +100,18 @@ export function HomeScreen({ user, onNavigate }) {
     <SafeAreaView style={styles.root}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.greenHeader}>
-          <Image source={require("../../images/introimages/Logo (1).png")} style={styles.logo} />
-          <Text style={styles.appTitle}>Nutrio</Text>
-          <Pressable style={styles.bell}>
+          <Pressable style={styles.menuButton} onPress={onOpenMenu}>
+            <Ionicons name="menu" size={24} color={colors.primaryDark} />
+          </Pressable>
+          <View style={styles.brandWrap}>
+            <Image source={require("../../images/introimages/Logo (1).png")} style={styles.logo} />
+            <Text style={styles.appTitle}>Nutrio</Text>
+          </View>
+          <Pressable style={styles.bell} onPress={() => setNotificationsOpen((value) => !value)}>
             <Ionicons name="notifications-outline" size={22} color={colors.primaryDark} />
             <View style={styles.redDot} />
           </Pressable>
+          {notificationsOpen ? <NotificationPanel /> : null}
         </View>
 
         <View style={styles.dashboardCard}>
@@ -142,9 +149,6 @@ export function HomeScreen({ user, onNavigate }) {
             <Burned label="Walking" value={Math.round(computed.walking)} icon="walk" />
             <View style={styles.verticalDivider} />
             <Burned label="Activity" value={Math.round(computed.activity)} icon="flash" />
-            <Pressable onPress={() => onNavigate({ name: "search", mealType: "Lunch" })} style={styles.floatingAdd}>
-              <Ionicons name="add" size={28} color={colors.primaryDark} />
-            </Pressable>
           </View>
         </View>
 
@@ -175,6 +179,16 @@ export function HomeScreen({ user, onNavigate }) {
       </ScrollView>
     </SafeAreaView>);
 
+}
+
+function NotificationPanel() {
+  return (
+    <View style={styles.notificationPanel}>
+      <Text style={styles.notificationTitle}>Notifications</Text>
+      <Text style={styles.notificationText}>No new alerts right now.</Text>
+      <Text style={styles.notificationText}>Meal and goal reminders will appear here.</Text>
+    </View>
+  );
 }
 
 function Stat({ label, value, color }) {
@@ -295,12 +309,33 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     flexDirection: "row",
     alignItems: "flex-start",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    position: "relative",
+    zIndex: 2
+  },
+  menuButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000000",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4
+  },
+  brandWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 18,
+    alignItems: "center",
+    pointerEvents: "none"
   },
   logo: {
     width: 28,
-    height: 28,
-    marginTop: 8
+    height: 28
   },
   appTitle: {
     color: colors.primaryDark,
@@ -325,6 +360,33 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 4,
     backgroundColor: "#E53935"
+  },
+  notificationPanel: {
+    position: "absolute",
+    top: 66,
+    right: 20,
+    width: 250,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    shadowColor: "#000000",
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 8,
+    zIndex: 5
+  },
+  notificationTitle: {
+    color: colors.text,
+    fontWeight: "900",
+    fontSize: 16,
+    marginBottom: 6
+  },
+  notificationText: {
+    color: colors.textMuted,
+    lineHeight: 20,
+    fontSize: 13
   },
   dashboardCard: {
     marginHorizontal: 20,
@@ -448,17 +510,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 58,
     backgroundColor: colors.border
-  },
-  floatingAdd: {
-    position: "absolute",
-    right: -5,
-    bottom: 8,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center"
   },
   sectionTitle: {
     marginHorizontal: 20,

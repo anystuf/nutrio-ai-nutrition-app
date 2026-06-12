@@ -67,15 +67,12 @@ export function MainNavigator({ user }) {
   return (
     <View style={styles.root}>
       <View style={styles.content}>
-        {tab === "home" ? <HomeScreen user={user} onNavigate={navigate} /> : null}
+        {tab === "home" ? <HomeScreen user={user} onNavigate={navigate} onOpenMenu={() => setDrawerOpen(true)} /> : null}
         {tab === "insights" ? <InsightsScreen user={user} /> : null}
         {tab === "scan" ? <ScanScreen user={user} /> : null}
         {tab === "workout" ? <WorkoutScreen user={user} /> : null}
         {tab === "profile" ? <ProfileScreen user={user} onNavigate={navigate} /> : null}
       </View>
-      <Pressable style={styles.menuButton} onPress={() => setDrawerOpen(true)}>
-        <Ionicons name="menu" size={24} color={colors.primaryDark} />
-      </Pressable>
       <View style={styles.nav}>
         {mainTabs.map((item) => {
           const active = item.key === tab;
@@ -98,22 +95,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1
-  },
-  menuButton: {
-    position: "absolute",
-    top: 38,
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000000",
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4
   },
   nav: {
     minHeight: 72,
